@@ -1,0 +1,194 @@
+# Daily AI + Ontario briefing. Edit this file and push to change what the job reads.
+
+schedule:
+  # GitHub Actions cron is UTC and ignores daylight saving time. The workflow
+  # starts at both UTC hours that can be this local hour; the script sends once.
+  timezone: America/Toronto
+  local_hour: 7
+  # Set afternoon_enabled to true to also send at afternoon_hour.
+  # The workflow already starts the matching UTC jobs; they exit until this is true.
+  afternoon_enabled: false
+  afternoon_hour: 16
+
+# https://platform.claude.com/docs/en/about-claude/models/overview
+# Sonnet 5.5 is the right daily model. It is fast, and its token price is
+# about half of Opus 5.5 ($2/$10 vs $4/$20 per million). Opus thinks on every
+# request, so a morning run with web search gets expensive quickly. This job
+# is editing sources that were already fetched. Change this to
+# claude-opus-5-5 if you want the heavier model anyway.
+model: claude-sonnet-5-5
+# low keeps the daily summarization cheap. medium or high thinks longer.
+effort: low
+max_tokens: 8000
+
+limits:
+  ai_items: 8
+  canada_items: 6
+  telegram_top: 5
+  max_ai_candidates: 40
+  max_canada_candidates: 25
+  # Watchlist hits are reserved first, then each source gets a share so a
+  # high Hugging Face trending score cannot push Hacker News out.
+  max_watchlist_candidates: 8
+  ai_quotas:
+    hackernews: 18
+    huggingface: 8
+    reddit: 8
+    github: 4
+  canada_quotas:
+    tenders: 4
+    scan: 4
+    google: 8
+    betakit: 4
+    ontario: 3
+    cyber: 4
+  article_chars: 4000
+  comment_chars: 1500
+  enrich_top: 8
+  seen_days: 30
+
+# Who the briefing is for. This is general reading, not a company pitch.
+briefing:
+  title: Daily briefing
+  audience: >
+    Readers who want to stay current on what is new in AI (models, tools,
+    papers, local inference, and hardware) and on technology in Ontario and
+    Canada (industry, education technology, cyber, AI policy, and public-sector
+    digital work). Write for a curious professional. Keep an item because it
+    teaches something or reports a real development. Do not angle items toward
+    any one company, and do not drop a good story because it is not a sales lead.
+
+# Who receives the email, besides anyone listed in the EMAIL_TO secret.
+# Add a colleague by appending their address and pushing. The secret and this
+# list are combined, and duplicates are skipped.
+delivery:
+  email_to: []
+  # Optional extra Telegram chats (a group id, or another person). The
+  # TELEGRAM_CHAT_ID secret is included as well.
+  telegram_chat_ids: []
+
+ai:
+  hackernews:
+    enabled: true
+    front_page_limit: 30
+    comments_per_story: 5
+  huggingface:
+    enabled: true
+    trending_limit: 15
+    papers_limit: 10
+  reddit:
+    enabled: true
+    subreddit: LocalLLM
+    limit: 25
+  # Title patterns that decide which Hacker News stories get the article
+  # text and top comments fetched. Everything else is still sent as a title.
+  enrich_title_patterns:
+    - \bAI\b
+    - \bLLMs?\b
+    - \bGPTs?\b
+    - \bClaude\b
+    - \bGemini\b
+    - \bLlama\b
+    - \bMistral\b
+    - \bQwen\b
+    - \bmodels?\b
+    - \bGPUs?\b
+    - \bCUDA\b
+    - \bROCm\b
+    - \bVulkan\b
+    - \bHugging\s?Face\b
+    - \btransformers?\b
+    - \bagents?\b
+    - \bOpenAI\b
+    - \bAnthropic\b
+    - \binference\b
+    - \bquantiz
+    - \bGGUF\b
+    - \bopen[- ]weight\b
+    - \bStrix\b
+  watchlist:
+    github_repos:
+      - ggml-org/llama.cpp
+      - ROCm/ROCm
+    keywords:
+      - ROCm
+      - Vulkan
+      - Strix Halo
+      - llama.cpp
+    release_lookback_hours: 48
+    keyword_lookback_hours: 24
+    keyword_hits_per_term: 5
+
+canada:
+  # Named feeds (BetaKit, Ontario Newsroom) stay on a short window.
+  lookback_hours: 72
+  # Ontario policy news is sparse. A longer window still sends each link once.
+  google_news_lookback_hours: 336
+  per_feed_limit: 15
+  google_news_queries:
+    - 'PowerSchool (Ontario OR Canada)'
+    - '"Ontario" ("school board" OR "school boards") (technology OR cybersecurity OR software OR IT)'
+    - 'Ontario (procurement OR "digital services") (software OR technology OR IT)'
+    - 'Canada ("AI policy" OR "sovereign AI" OR "sovereign compute" OR "artificial intelligence")'
+    - '("managed IT" OR "managed service provider") (Ontario OR Canada)'
+  # Applied only to feeds with require_keywords: true, so the Ontario
+  # newsroom firehose does not bury the model in unrelated releases.
+  keep_keywords:
+    - education
+    - school
+    - student
+    - college
+    - university
+    - apprenticeship
+    - technology
+    - digital
+    - cyber
+    - software
+    - artificial intelligence
+    - AI
+    - procurement
+    - privacy
+    - broadband
+    - cloud
+    - PowerSchool
+    - information technology
+    - managed service
+  feeds:
+    - name: BetaKit
+      url: https://betakit.com/feed/
+    - name: Ontario Newsroom
+      url: https://news.ontario.ca/newsroom/en/rss/allnews.rss
+      require_keywords: true
+    - name: Canadian Centre for Cyber Security
+      url: https://www.cyber.gc.ca/api/cccs/atom/v1/get?feed=alerts_advisories&lang=en
+      lookback_hours: 168
+  # Federal tender notices published recently. Filtered to IT and education
+  # so the file's construction and goods notices stay out.
+  canadabuys:
+    enabled: true
+    url: https://canadabuys.canada.ca/opendata/pub/newTenderNotice-nouvelAvisAppelOffres.csv
+    lookback_days: 14
+    limit: 12
+    keywords:
+      - software
+      - information technology
+      - information systems
+      - cybersecurity
+      - cyber security
+      - artificial intelligence
+      - AI
+      - cloud
+      - computer
+      - education
+      - school
+      - learning management
+      - PowerSchool
+      - managed service
+      - telecommunications
+  # Open-ended search on top of the fixed feeds. Costs about a cent per
+  # search, capped by max_searches. Skipped when ANTHROPIC_API_KEY is unset.
+  market_scan:
+    enabled: true
+    max_searches: 5
+    max_items: 8
+    max_tokens: 4000

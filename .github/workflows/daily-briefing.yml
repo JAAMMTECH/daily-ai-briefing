@@ -1,0 +1,66 @@
+name: Daily briefing
+
+on:
+  schedule:
+    # GitHub cron is UTC and does not follow daylight saving time.
+    # 11:00 UTC is 07:00 in Toronto during EDT. 12:00 UTC is 07:00 during EST.
+    # The script sends only when that local hour matches, plus a one-hour grace
+    # period if the slot has not been delivered yet, so only one of these sends.
+    - cron: "0 11 * * *"
+    - cron: "0 12 * * *"
+    # 20:00 UTC is 16:00 EDT. 21:00 UTC is 16:00 EST.
+    # These exit immediately until schedule.afternoon_enabled is true in config.yaml.
+    - cron: "0 20 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+# One briefing at a time, so a late run cannot race the next UTC start
+# and send the same digest twice.
+concurrency:
+  group: daily-briefing
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run briefing
+        id: run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BRIEFING_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+        run: python -m briefing.main
+
+      - name: Commit digest and state
+        if: steps.run.outcome == 'success' || steps.run.outcome == 'failure'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data digests
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "digest: $(TZ=America/Toronto date +%F)"
+            git push
+          fi

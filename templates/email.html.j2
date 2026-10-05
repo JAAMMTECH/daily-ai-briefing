@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ digest.subject }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f7;color:#1a1a1a;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f5f7;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:10px;padding:28px 28px 20px;">
+          <tr>
+            <td style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 8px;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#5c6570;">{{ masthead }}</p>
+              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:650;">{{ digest.subject }}</h1>
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#1a1a1a;">{{ digest.intro }}</p>
+              {% for section in digest.sections %}
+              <h2 style="margin:0 0 12px;padding-top:8px;font-size:16px;line-height:1.3;border-top:1px solid #e6e8eb;color:#1a1a1a;">{{ section.title }}</h2>
+              {% if not section.items %}
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#5c6570;">Nothing worth flagging.</p>
+              {% endif %}
+              {% for item in section.items %}
+              <div style="margin:0 0 18px;padding:0 0 4px;">
+                <p style="margin:0 0 4px;font-size:16px;line-height:1.4;">
+                  {% if item.url %}
+                  <a href="{{ item.url }}" style="color:#0b57d0;text-decoration:none;font-weight:650;">{{ item.title }}</a>
+                  {% else %}
+                  <span style="font-weight:650;">{{ item.title }}</span>
+                  {% endif %}
+                </p>
+                <p style="margin:0 0 6px;font-size:13px;color:#5c6570;">
+                  {{ item.source }}
+                  {% if item.watchlist_hit %}
+                  · <span style="color:#7a4e00;">Watchlist</span>
+                  {% endif %}
+                  {% if item.discussion_url and item.discussion_url != item.url %}
+                  · <a href="{{ item.discussion_url }}" style="color:#0b57d0;text-decoration:none;">comments</a>
+                  {% endif %}
+                </p>
+                <p style="margin:0;font-size:15px;line-height:1.5;">{{ item.summary }}</p>
+                {% if item.why_it_matters %}
+                <p style="margin:8px 0 0;padding:8px 10px;background:#f4f7fb;border-radius:6px;font-size:14px;line-height:1.45;color:#1a1a1a;">
+                  <strong>Why it's worth knowing:</strong> {{ item.why_it_matters }}
+                </p>
+                {% endif %}
+              </div>
+              {% endfor %}
+              {% endfor %}
+              <p style="margin:12px 0 0;padding-top:12px;border-top:1px solid #e6e8eb;font-size:12px;line-height:1.4;color:#5c6570;">
+                Sent {{ generated_at }}. Stories already sent are skipped for 30 days.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
