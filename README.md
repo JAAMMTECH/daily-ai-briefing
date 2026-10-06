@@ -104,11 +104,11 @@ python -m briefing.main --force
 
 ## When it sends
 
-The workflow starts at 11:00 and 12:00 UTC. Those are the two hours that 7:00am in Toronto can fall on: 11:00 UTC during daylight time, 12:00 UTC during standard time. The script checks the clock in `America/Toronto` and sends only during the configured hour. If GitHub starts the job late, it still sends during the following hour, unless that morning's briefing was already delivered.
+The workflow starts at 11:17 and 12:17 UTC. Those are the two hours that 7:17am in Toronto can fall on: 11:17 UTC during daylight time, 12:17 UTC during standard time. The minute is 17, not 0, because GitHub delays and drops the most jobs at the top of the hour. The script checks the clock in `America/Toronto` and sends only during the configured hour. If GitHub starts the job late, it still sends during the following hour, unless that morning's briefing was already delivered.
 
-GitHub often starts a scheduled job a few minutes late, and sometimes closer to half an hour. Expect the message around 7:00 to 7:30am.
+Expect the message around 7:17 to 7:45am. A delay of more than about an hour still misses the window, because the script will not send after 9:00am.
 
-Two more starts, at 20:00 and 21:00 UTC, cover 4:00pm Toronto time the same way. They exit immediately until you set this in `config.yaml` and push:
+Two more starts, at 20:17 and 21:17 UTC, cover 4:17pm Toronto time the same way. They exit immediately until you set this in `config.yaml` and push:
 
 ```yaml
 schedule:

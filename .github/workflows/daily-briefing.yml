@@ -3,15 +3,16 @@ name: Daily briefing
 on:
   schedule:
     # GitHub cron is UTC and does not follow daylight saving time.
-    # 11:00 UTC is 07:00 in Toronto during EDT. 12:00 UTC is 07:00 during EST.
+    # Minute 17 avoids the top of the hour, when GitHub drops or delays the most jobs.
+    # 11:17 UTC is 07:17 in Toronto during EDT. 12:17 UTC is 07:17 during EST.
     # The script sends only when that local hour matches, plus a one-hour grace
     # period if the slot has not been delivered yet, so only one of these sends.
-    - cron: "0 11 * * *"
-    - cron: "0 12 * * *"
-    # 20:00 UTC is 16:00 EDT. 21:00 UTC is 16:00 EST.
+    - cron: "17 11 * * *"
+    - cron: "17 12 * * *"
+    # 20:17 UTC is 16:17 EDT. 21:17 UTC is 16:17 EST.
     # These exit immediately until schedule.afternoon_enabled is true in config.yaml.
-    - cron: "0 20 * * *"
-    - cron: "0 21 * * *"
+    - cron: "17 20 * * *"
+    - cron: "17 21 * * *"
   workflow_dispatch:
 
 # One briefing at a time, so a late run cannot race the next UTC start
