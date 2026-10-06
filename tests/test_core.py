@@ -11,8 +11,8 @@ from briefing.sources.canadabuys import select_notices
 from briefing.sources.market_scan import items_from_search_response
 from briefing.deliver.email import email_recipients
 from briefing.deliver.telegram import telegram_chat_ids
-from briefing.models import Item
-from briefing.render import assemble, render_telegram
+from briefing.models import Digest, DigestItem, DigestSection, Item
+from briefing.render import assemble, digest_from_markdown, render_markdown, render_telegram
 from briefing.schedule import select_slot
 from briefing.sources import cap_candidates
 from briefing.state import State
@@ -317,6 +317,46 @@ class BriefingAssemblyTests(unittest.TestCase):
         self.assertEqual(match_keywords("email about available seats", ["AI"]), [])
         self.assertEqual(match_keywords("Ontario AI policy", ["AI"]), ["AI"])
         self.assertEqual(match_keywords("ROCm support landed", ["ROCm", "Vulkan"]), ["ROCm"])
+
+
+class DigestArchiveTests(unittest.TestCase):
+    def test_saved_markdown_round_trips(self) -> None:
+        original = Digest(
+            subject="AI + Ontario briefing — October 6, 2026",
+            intro="One development, and one Canadian note.",
+            sections=[
+                DigestSection(
+                    id="ai",
+                    title="AI",
+                    items=[
+                        DigestItem(
+                            title='Mistral Large 4: "Le Chonk"',
+                            url="https://mistral.ai/news/mistral-large-4/",
+                            source="Hacker News (watchlist)",
+                            summary="Weights are promised by the end of the month.",
+                            why_it_matters="It would be one of the largest openly downloadable models.",
+                            watchlist_hit=True,
+                            discussion_url="https://news.ycombinator.com/item?id=49978116",
+                        )
+                    ],
+                ),
+                DigestSection(
+                    id="canada",
+                    title="Ontario and Canada",
+                    items=[
+                        DigestItem(
+                            title="Ottawa launches a council",
+                            url="https://www.cbc.ca/news/example",
+                            source="Google News",
+                            summary="Ottawa launched a council.",
+                            why_it_matters="",
+                            watchlist_hit=False,
+                        )
+                    ],
+                ),
+            ],
+        )
+        self.assertEqual(render_markdown(digest_from_markdown(render_markdown(original))), render_markdown(original))
 
 
 if __name__ == "__main__":

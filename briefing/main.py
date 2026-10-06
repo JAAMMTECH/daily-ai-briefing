@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
@@ -16,6 +18,7 @@ from briefing.http import client
 from briefing.render import (
     archive_name,
     assemble,
+    digest_from_markdown,
     fallback_digest,
     render_html,
     render_markdown,
@@ -36,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.getLogger("trafilatura").setLevel(logging.ERROR)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     cfg = load_config(args.config)
+    if args.resend:
+        return _resend(cfg, args.resend)
     now = datetime.now().astimezone()
     local = local_now(now, cfg["schedule"])
     state = State.load()
@@ -150,6 +155,41 @@ def _missing_secrets(cfg: dict) -> list[str]:
     return missing
 
 
+def _resend(cfg: dict, path: Path) -> int:
+    """Email a saved digest again. Does not rebuild it or change seen state."""
+    archive = path if path.is_absolute() else ROOT / path
+    if not archive.is_file():
+        log.error("No saved digest at %s", archive)
+        return 1
+    recipients = email_recipients(cfg)
+    if not recipients or not _env("SMTP_USER") or not _env("SMTP_APP_PASSWORD"):
+        log.error("SMTP_USER, SMTP_APP_PASSWORD, and at least one recipient are required")
+        return 1
+    digest = digest_from_markdown(archive.read_text(encoding="utf-8"))
+    masthead = ((cfg.get("briefing") or {}).get("title") or "Daily briefing").strip()
+    html = render_html(digest, _generated_at(archive, cfg), masthead)
+    send_email(digest.subject, html, archive.read_text(encoding="utf-8"), recipients)
+    log.info("Resent %s to %s", archive.name, ", ".join(recipients))
+    return 0
+
+
+def _generated_at(archive: Path, cfg: dict) -> str:
+    match = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})(?:-manual-(\d{2})(\d{2}))?", archive.stem)
+    zone = ZoneInfo((cfg.get("schedule") or {}).get("timezone") or "America/Toronto")
+    if match is None:
+        return datetime.now(zone).strftime("%Y-%m-%d %H:%M %Z")
+    year, month, day, hour, minute = match.groups()
+    when = datetime(
+        int(year),
+        int(month),
+        int(day),
+        int(hour or (cfg.get("schedule") or {}).get("local_hour") or 7),
+        int(minute or 0),
+        tzinfo=zone,
+    )
+    return when.strftime("%Y-%m-%d %H:%M %Z")
+
+
 def _archive_url(filename: str) -> str | None:
     repo = _env("GITHUB_REPOSITORY")
     if not repo:
@@ -173,6 +213,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--force",
         action="store_true",
         help="Run even if it is outside the scheduled local hour.",
+    )
+    parser.add_argument(
+        "--resend",
+        type=Path,
+        default=None,
+        help="Email a saved digest again, without rebuilding it or updating seen state.",
     )
     parser.add_argument("--config", type=Path, default=None, help="Path to config.yaml.")
     return parser.parse_args(argv)

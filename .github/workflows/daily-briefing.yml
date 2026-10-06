@@ -14,6 +14,12 @@ on:
     - cron: "17 20 * * *"
     - cron: "17 21 * * *"
   workflow_dispatch:
+    inputs:
+      resend:
+        description: "Saved digest to email again, such as digests/2026-10-06-manual-1027.md. Leave empty for a normal run."
+        required: false
+        default: ""
+        type: string
 
 # One briefing at a time, so a late run cannot race the next UTC start
 # and send the same digest twice.
@@ -51,7 +57,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BRIEFING_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
-        run: python -m briefing.main
+          RESEND_PATH: ${{ inputs.resend }}
+        run: |
+          if [ -n "$RESEND_PATH" ]; then
+            python -m briefing.main --resend "$RESEND_PATH"
+          else
+            python -m briefing.main
+          fi
 
       - name: Commit digest and state
         if: steps.run.outcome == 'success' || steps.run.outcome == 'failure'
