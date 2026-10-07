@@ -5,8 +5,9 @@ schedule:
   # The first check between local_hour and latest_hour sends it, and later
   # checks that day exit.
   timezone: America/Toronto
-  local_hour: 7
-  latest_hour: 12
+  # Test values for a 10:17 trigger. Restore local_hour 7 and latest_hour 12.
+  local_hour: 10
+  latest_hour: 23
 
 # https://platform.claude.com/docs/en/about-claude/models/overview
 # Sonnet 5.5 is the right daily model. It is fast, and its token price is

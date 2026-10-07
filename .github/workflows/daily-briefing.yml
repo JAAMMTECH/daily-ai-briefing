@@ -2,12 +2,9 @@ name: Daily briefing
 
 on:
   schedule:
-    # GitHub starts scheduled jobs late, often by several hours, so this starts
-    # every hour from 04:17 to 16:17 UTC, which is midnight to noon in Toronto
-    # in either daylight or standard time. The script sends the first run
-    # between 7:00 and noon Toronto time, and later runs that day exit.
-    # Minute 17 avoids the busy top of the hour.
-    - cron: "17 4-16 * * *"
+    # Test: one trigger at 14:17 UTC, which is 10:17 in Toronto during EDT.
+    # Restore "17 4-16 * * *" (midnight to noon Toronto) after the test.
+    - cron: "17 14 * * *"
   workflow_dispatch:
     inputs:
       resend:
