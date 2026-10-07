@@ -14,18 +14,15 @@ def select_slot(
     """Return the briefing slot to send, or None when this run should exit.
 
     GitHub starts scheduled jobs hours late, so the workflow starts every hour
-    and the first run inside a slot's window sends it. The morning window runs
-    from local_hour until afternoon_hour; the afternoon window runs from
-    afternoon_hour to midnight. The delivered flag stops later runs from
-    sending the same slot twice. A forced run inside an undelivered window
-    counts as that slot, so the schedule does not send a second copy.
+    through the morning and the first run between local_hour and latest_hour
+    sends. The delivered flag stops later runs from sending a second copy. A
+    forced run inside an undelivered morning counts as the morning briefing.
     """
     local = _local(now, schedule)
-    for name, start, end in _windows(schedule):
-        if delivery_key(local, name) in delivered:
-            continue
-        if start <= local.hour < end:
-            return name
+    start = int(schedule["local_hour"])
+    end = int(schedule.get("latest_hour", 12))
+    if delivery_key(local, "morning") not in delivered and start <= local.hour < end:
+        return "morning"
     return "manual" if force else None
 
 
@@ -36,15 +33,6 @@ def delivery_key(now: datetime, slot: str, schedule: dict | None = None) -> str:
 
 def local_now(now: datetime, schedule: dict) -> datetime:
     return _local(now, schedule)
-
-
-def _windows(schedule: dict) -> list[tuple[str, int, int]]:
-    morning = int(schedule["local_hour"])
-    afternoon = int(schedule["afternoon_hour"])
-    windows = [("morning", morning, afternoon)]
-    if schedule.get("afternoon_enabled"):
-        windows.append(("afternoon", afternoon, 24))
-    return windows
 
 
 def _local(now: datetime, schedule: dict | None) -> datetime:

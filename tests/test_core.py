@@ -22,8 +22,7 @@ from briefing.textutil import match_keywords, normalize_url
 TORONTO = {
     "timezone": "America/Toronto",
     "local_hour": 7,
-    "afternoon_enabled": False,
-    "afternoon_hour": 16,
+    "latest_hour": 12,
 }
 
 
@@ -46,19 +45,14 @@ class ScheduleTests(unittest.TestCase):
     def test_job_started_hours_late_still_sends_the_morning(self) -> None:
         # 14:50 UTC in October is 10:50 EDT, about where GitHub starts a 7:17 trigger.
         self.assertEqual(select_slot(_utc(2026, 10, 7, 14, 50), TORONTO, {}, force=False), "morning")
-        self.assertEqual(select_slot(_utc(2026, 1, 15, 20, 30), TORONTO, {}, force=False), "morning")
-        self.assertIsNone(select_slot(_utc(2026, 1, 15, 21, 30), TORONTO, {}, force=False))
+        self.assertEqual(select_slot(_utc(2026, 1, 15, 16, 30), TORONTO, {}, force=False), "morning")
 
     def test_runs_before_the_morning_hour_wait(self) -> None:
         self.assertIsNone(select_slot(_utc(2026, 10, 7, 10, 50), TORONTO, {}, force=False))
 
-    def test_afternoon_stays_off_until_enabled(self) -> None:
-        self.assertIsNone(select_slot(_utc(2026, 7, 15, 20), TORONTO, {}, force=False))
-        enabled = {**TORONTO, "afternoon_enabled": True}
-        self.assertEqual(select_slot(_utc(2026, 7, 15, 20), enabled, {}, force=False), "afternoon")
-        self.assertEqual(select_slot(_utc(2026, 1, 15, 21), enabled, {}, force=False), "afternoon")
-        delivered = {"2026-01-15-morning": "2026-01-15T12:20:00+00:00"}
-        self.assertIsNone(select_slot(_utc(2026, 1, 15, 20), enabled, delivered, force=False))
+    def test_nothing_sends_after_noon(self) -> None:
+        self.assertIsNone(select_slot(_utc(2026, 10, 7, 16, 5), TORONTO, {}, force=False))
+        self.assertIsNone(select_slot(_utc(2026, 1, 15, 17, 5), TORONTO, {}, force=False))
 
     def test_force_always_runs(self) -> None:
         self.assertEqual(select_slot(_utc(2026, 1, 15, 3), TORONTO, {}, force=True), "manual")

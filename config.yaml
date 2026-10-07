@@ -1,14 +1,12 @@
 # Daily AI + Ontario briefing. Edit this file and push to change what the job reads.
 
 schedule:
-  # The workflow checks every hour. The first check on or after local_hour
-  # sends the morning briefing, and later checks that day exit. A check after
-  # afternoon_hour no longer sends the morning one.
+  # One briefing a day. The workflow checks every hour through the morning.
+  # The first check between local_hour and latest_hour sends it, and later
+  # checks that day exit.
   timezone: America/Toronto
   local_hour: 7
-  # Set afternoon_enabled to true to also send once on or after afternoon_hour.
-  afternoon_enabled: false
-  afternoon_hour: 16
+  latest_hour: 12
 
 # https://platform.claude.com/docs/en/about-claude/models/overview
 # Sonnet 5.5 is the right daily model. It is fast, and its token price is

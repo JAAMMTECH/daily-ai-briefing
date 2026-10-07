@@ -80,7 +80,7 @@ Everyone on the list gets the same email, and they can see the other recipients.
 
 ## 3. Run it once now
 
-On GitHub: Actions, Daily briefing, Run workflow. That button skips the clock check and sends immediately. Links included in that run are marked seen, so they will not be repeated in the next briefing. A run between 7:00am and 4:00pm counts as that day's morning briefing, so the schedule does not send a second one.
+On GitHub: Actions, Daily briefing, Run workflow. That button skips the clock check and sends immediately. Links included in that run are marked seen, so they will not be repeated in the next briefing. A run between 7:00am and noon counts as that day's briefing, so the schedule does not send a second one.
 
 You can also run it on your machine. From the repo root:
 
@@ -104,19 +104,13 @@ python -m briefing.main --force
 
 ## When it sends
 
-GitHub starts scheduled jobs late. In October 2026 this repo's jobs were starting about three and a half hours after their scheduled time. So the workflow starts every hour, at 17 minutes past, and the script checks the clock in `America/Toronto`. The first run on or after 7:00am sends the morning briefing. Every later run that day exits in a few seconds.
+One briefing a day, in the morning.
 
-When GitHub is on time, the briefing arrives around 7:20am. When GitHub is running hours behind, it arrives with the first job that does start after 7:00am. A run after 4:00pm no longer sends the morning briefing.
+GitHub starts scheduled jobs late. In October 2026 this repo's jobs were starting about three and a half hours after their scheduled time. So the workflow starts every hour from midnight to noon Toronto time, at 17 minutes past, and the script checks the clock in `America/Toronto`. The first run between 7:00am and noon sends the briefing. Every other run exits in a few seconds.
 
-To also send once on or after 4:00pm, set this in `config.yaml` and push:
+When GitHub is on time, the briefing arrives around 7:20am. When GitHub is running hours behind, it arrives with the first job that does start after 7:00am. If no job starts before noon, that day is skipped rather than sent in the afternoon.
 
-```yaml
-schedule:
-  afternoon_enabled: true
-  afternoon_hour: 16
-```
-
-To use a different morning hour, change `local_hour`. The hourly workflow does not need to change.
+To change the morning window, edit `local_hour` and `latest_hour` in `config.yaml`. The workflow covers midnight to noon, so keep `latest_hour` at 12 or earlier.
 
 GitHub cannot promise an exact time. For delivery at exactly 7:00am, an outside timer has to call the workflow's Run workflow API at that time, for example a scheduled Power Automate flow or cron-job.org with a GitHub token that can run Actions on this repo.
 
