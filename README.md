@@ -26,7 +26,7 @@ git remote add origin https://github.com/YOU/AI-IT-Updates.git
 git push -u origin main
 ```
 
-Scheduled runs start only after that push is on the default branch. The first scheduled briefing goes out with the first hourly run on or after 7:00am Toronto time. You do not have to wait: see "Run it once now" below.
+Scheduled runs start only after that push is on the default branch. The first scheduled briefing goes out at 7:00am Toronto time once the Vercel timer below is set up. You do not have to wait: see "Run it once now" below.
 
 ## 2. Add repository secrets
 
@@ -104,15 +104,22 @@ python -m briefing.main --force
 
 ## When it sends
 
-One briefing a day, in the morning.
+One briefing a day, at 7:00am Toronto time.
 
-GitHub starts scheduled jobs late. In October 2026 this repo's jobs were starting about three and a half hours after their scheduled time. So the workflow starts every hour from midnight to noon Toronto time, at 17 minutes past, and the script checks the clock in `America/Toronto`. The first run between 7:00am and noon sends the briefing. Every other run exits in a few seconds.
+GitHub starts its own scheduled jobs late. In October 2026 this repo's jobs were starting about three and a half hours after their scheduled time. So a small Vercel project in [vercel/](vercel/) starts the workflow instead. Vercel calls GitHub's Run workflow API at 11:00 and 12:00 UTC. Those are 7:00am Toronto time in daylight time and in standard time. A run started this way follows the same clock check as a scheduled one: it sends only between 7:00am and noon, and only if today's briefing has not gone out. So one of the two sends and the other exits. The email arrives around 7:02am.
 
-When GitHub is on time, the briefing arrives around 7:20am. When GitHub is running hours behind, it arrives with the first job that does start after 7:00am. If no job starts before noon, that day is skipped rather than sent in the afternoon.
+GitHub's own schedule stays on as a backup, starting the workflow every hour from midnight to noon Toronto time. If Vercel misses a day, the first of those that GitHub actually starts after 7:00am sends the briefing. If nothing starts before noon, that day is skipped rather than sent in the afternoon.
 
-To change the morning window, edit `local_hour` and `latest_hour` in `config.yaml`. The workflow covers midnight to noon, so keep `latest_hour` at 12 or earlier.
+To change the morning window, edit `local_hour` and `latest_hour` in `config.yaml`, and the two UTC hours in `vercel/vercel.json`.
 
-GitHub cannot promise an exact time. For delivery at exactly 7:00am, an outside timer has to call the workflow's Run workflow API at that time, for example a scheduled Power Automate flow or cron-job.org with a GitHub token that can run Actions on this repo.
+### Setting up the Vercel timer
+
+1. On GitHub, create a fine-grained personal access token: Settings, Developer settings, Personal access tokens, Fine-grained tokens. Choose only the `daily-ai-briefing` repository, and give it **Actions: Read and write**. Nothing else.
+2. In Vercel, add a new project and import `daily-ai-briefing`. Set **Root Directory** to `vercel` and **Framework Preset** to Other.
+3. Add two environment variables: `GITHUB_TOKEN` with that token, and `CRON_SECRET` with any long random string. Vercel sends the secret with each cron call, and the function rejects calls without it.
+4. Deploy. The two cron jobs appear under the project's Settings, Cron Jobs. Cron jobs only run on the production deployment.
+
+Pushes that do not change `vercel/`, including the daily digest commits, do not redeploy the project.
 
 ## What it reads
 
@@ -139,6 +146,7 @@ The email is the full digest. Telegram is the top 5 items plus a link to the mar
 | `briefing/main.py` | Runs one briefing |
 | `data/seen.json` | Links already sent, and which day's slot was delivered |
 | `digests/` | One markdown file per briefing, committed by Actions |
+| `vercel/` | The 7:00am timer that starts the workflow |
 
 ## If a run fails
 

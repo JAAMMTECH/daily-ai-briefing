@@ -2,11 +2,17 @@ name: Daily briefing
 
 on:
   schedule:
-    # Test: one trigger at 14:17 UTC, which is 10:17 in Toronto during EDT.
-    # Restore "17 4-16 * * *" (midnight to noon Toronto) after the test.
-    - cron: "17 14 * * *"
+    # Backup only. The Vercel project in vercel/ starts this at 7:00 Toronto
+    # time. GitHub starts its own schedule hours late, so these hourly starts
+    # from midnight to noon Toronto time only matter if Vercel misses a day.
+    - cron: "17 4-16 * * *"
   workflow_dispatch:
     inputs:
+      scheduled:
+        description: "Follow the 7:00 to noon window and skip if today's briefing already went out. The Vercel timer sets this."
+        required: false
+        default: false
+        type: boolean
       resend:
         description: "Saved digest to email again, such as digests/2026-10-06-manual-1027.md. Leave empty for a normal run."
         required: false
@@ -51,7 +57,7 @@ jobs:
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BRIEFING_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+          BRIEFING_FORCE: ${{ github.event_name == 'workflow_dispatch' && !inputs.scheduled && '1' || '0' }}
           RESEND_PATH: ${{ inputs.resend }}
         run: |
           if [ -n "$RESEND_PATH" ]; then

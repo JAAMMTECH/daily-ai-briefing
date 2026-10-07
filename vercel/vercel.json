@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/run-briefing", "schedule": "0 11 * * *" },
+    { "path": "/api/run-briefing", "schedule": "0 12 * * *" }
+  ],
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
+}
