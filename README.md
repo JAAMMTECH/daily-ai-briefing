@@ -26,7 +26,7 @@ git remote add origin https://github.com/YOU/AI-IT-Updates.git
 git push -u origin main
 ```
 
-Scheduled runs start only after that push is on the default branch. The first scheduled run is the next 7:00am Toronto time. You do not have to wait: see "Run it once now" below.
+Scheduled runs start only after that push is on the default branch. The first scheduled briefing goes out with the first hourly run on or after 7:00am Toronto time. You do not have to wait: see "Run it once now" below.
 
 ## 2. Add repository secrets
 
@@ -80,7 +80,7 @@ Everyone on the list gets the same email, and they can see the other recipients.
 
 ## 3. Run it once now
 
-On GitHub: Actions, Daily briefing, Run workflow. That button skips the 7:00am check and sends immediately. Links included in that run are marked seen, so they will not be repeated in the next morning briefing.
+On GitHub: Actions, Daily briefing, Run workflow. That button skips the clock check and sends immediately. Links included in that run are marked seen, so they will not be repeated in the next briefing. A run between 7:00am and 4:00pm counts as that day's morning briefing, so the schedule does not send a second one.
 
 You can also run it on your machine. From the repo root:
 
@@ -94,7 +94,7 @@ python -m briefing.main --dry-run --force
 
 `--dry-run` writes `out/digest.html`, `out/digest.md`, and `out/telegram.txt`. It does not send anything and does not update `data/seen.json`. Without `ANTHROPIC_API_KEY`, the dry run is an unsummarized list of what the sources returned, which is enough to confirm collection works. With a key, the dry run calls Claude and spends a few cents.
 
-`--force` is required outside the 7:00am window. Omit it and the script exits immediately, which is what the extra UTC start does on purpose.
+`--force` sends even when the clock check would exit, for example before 7:00am or after the day's briefing already went out.
 
 To send for real from your machine:
 
@@ -104,11 +104,11 @@ python -m briefing.main --force
 
 ## When it sends
 
-The workflow starts at 11:17 and 12:17 UTC. Those are the two hours that 7:17am in Toronto can fall on: 11:17 UTC during daylight time, 12:17 UTC during standard time. The minute is 17, not 0, because GitHub delays and drops the most jobs at the top of the hour. The script checks the clock in `America/Toronto` and sends only during the configured hour. If GitHub starts the job late, it still sends during the following hour, unless that morning's briefing was already delivered.
+GitHub starts scheduled jobs late. In October 2026 this repo's jobs were starting about three and a half hours after their scheduled time. So the workflow starts every hour, at 17 minutes past, and the script checks the clock in `America/Toronto`. The first run on or after 7:00am sends the morning briefing. Every later run that day exits in a few seconds.
 
-Expect the message around 7:17 to 7:45am. A delay of more than about an hour still misses the window, because the script will not send after 9:00am.
+When GitHub is on time, the briefing arrives around 7:20am. When GitHub is running hours behind, it arrives with the first job that does start after 7:00am. A run after 4:00pm no longer sends the morning briefing.
 
-Two more starts, at 20:17 and 21:17 UTC, cover 4:17pm Toronto time the same way. They exit immediately until you set this in `config.yaml` and push:
+To also send once on or after 4:00pm, set this in `config.yaml` and push:
 
 ```yaml
 schedule:
@@ -116,7 +116,9 @@ schedule:
   afternoon_hour: 16
 ```
 
-To use a different morning hour, change `local_hour` and update the cron lines in [.github/workflows/daily-briefing.yml](.github/workflows/daily-briefing.yml). The two cron hours must be the UTC times that match that local hour in EDT (UTC-4) and EST (UTC-5).
+To use a different morning hour, change `local_hour`. The hourly workflow does not need to change.
+
+GitHub cannot promise an exact time. For delivery at exactly 7:00am, an outside timer has to call the workflow's Run workflow API at that time, for example a scheduled Power Automate flow or cron-job.org with a GitHub token that can run Actions on this repo.
 
 ## What it reads
 
@@ -152,4 +154,4 @@ Open the failed Actions run and read the log.
 - Email failed: the app password is wrong, or Gmail blocked the sign-in. The script does not mark links as seen when email fails, so the next start can retry.
 - Telegram failed: you have not sent `/start` to the bot, or the chat id is wrong. If email succeeded, those links are marked seen so you are not mailed twice. The digest is still in `digests/` and in your inbox.
 - Reddit failed: expected sometimes. The log says the run continued.
-- The morning run is green but you got nothing: it started outside the Toronto window and exited on purpose. Check the log for "Not due". Use Run workflow to send now.
+- A run is green but you got nothing: most hourly runs exit on purpose, before 7:00am or after the briefing was sent. Check the log for "Not due". Use Run workflow to send now.

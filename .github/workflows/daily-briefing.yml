@@ -2,17 +2,10 @@ name: Daily briefing
 
 on:
   schedule:
-    # GitHub cron is UTC and does not follow daylight saving time.
-    # Minute 17 avoids the top of the hour, when GitHub drops or delays the most jobs.
-    # 11:17 UTC is 07:17 in Toronto during EDT. 12:17 UTC is 07:17 during EST.
-    # The script sends only when that local hour matches, plus a one-hour grace
-    # period if the slot has not been delivered yet, so only one of these sends.
-    - cron: "17 11 * * *"
-    - cron: "17 12 * * *"
-    # 20:17 UTC is 16:17 EDT. 21:17 UTC is 16:17 EST.
-    # These exit immediately until schedule.afternoon_enabled is true in config.yaml.
-    - cron: "17 20 * * *"
-    - cron: "17 21 * * *"
+    # GitHub starts scheduled jobs late, often by several hours, so this starts
+    # every hour. The script sends the first run on or after 7:00 Toronto time
+    # and later runs that day exit. Minute 17 avoids the busy top of the hour.
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       resend:
@@ -35,6 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The commit that triggered a late run can predate the last delivery.
+          ref: main
 
       - uses: actions/setup-python@v5
         with:

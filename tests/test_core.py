@@ -43,20 +43,30 @@ class ScheduleTests(unittest.TestCase):
         delivered = {"2026-07-15-morning": "2026-07-15T11:05:00+00:00"}
         self.assertIsNone(select_slot(_utc(2026, 7, 15, 12), TORONTO, delivered, force=False))
 
-    def test_late_job_still_sends_during_the_following_hour(self) -> None:
-        self.assertEqual(select_slot(_utc(2026, 7, 15, 12, 30), TORONTO, {}, force=False), "morning")
-        self.assertEqual(select_slot(_utc(2026, 1, 15, 13, 30), TORONTO, {}, force=False), "morning")
-        self.assertIsNone(select_slot(_utc(2026, 1, 15, 14, 30), TORONTO, {}, force=False))
+    def test_job_started_hours_late_still_sends_the_morning(self) -> None:
+        # 14:50 UTC in October is 10:50 EDT, about where GitHub starts a 7:17 trigger.
+        self.assertEqual(select_slot(_utc(2026, 10, 7, 14, 50), TORONTO, {}, force=False), "morning")
+        self.assertEqual(select_slot(_utc(2026, 1, 15, 20, 30), TORONTO, {}, force=False), "morning")
+        self.assertIsNone(select_slot(_utc(2026, 1, 15, 21, 30), TORONTO, {}, force=False))
+
+    def test_runs_before_the_morning_hour_wait(self) -> None:
+        self.assertIsNone(select_slot(_utc(2026, 10, 7, 10, 50), TORONTO, {}, force=False))
 
     def test_afternoon_stays_off_until_enabled(self) -> None:
         self.assertIsNone(select_slot(_utc(2026, 7, 15, 20), TORONTO, {}, force=False))
         enabled = {**TORONTO, "afternoon_enabled": True}
         self.assertEqual(select_slot(_utc(2026, 7, 15, 20), enabled, {}, force=False), "afternoon")
         self.assertEqual(select_slot(_utc(2026, 1, 15, 21), enabled, {}, force=False), "afternoon")
-        self.assertIsNone(select_slot(_utc(2026, 1, 15, 20), enabled, {}, force=False))
+        delivered = {"2026-01-15-morning": "2026-01-15T12:20:00+00:00"}
+        self.assertIsNone(select_slot(_utc(2026, 1, 15, 20), enabled, delivered, force=False))
 
     def test_force_always_runs(self) -> None:
         self.assertEqual(select_slot(_utc(2026, 1, 15, 3), TORONTO, {}, force=True), "manual")
+
+    def test_forced_run_in_the_morning_counts_as_the_morning(self) -> None:
+        self.assertEqual(select_slot(_utc(2026, 10, 7, 14), TORONTO, {}, force=True), "morning")
+        delivered = {"2026-10-07-morning": "2026-10-07T14:00:00+00:00"}
+        self.assertEqual(select_slot(_utc(2026, 10, 7, 15), TORONTO, delivered, force=True), "manual")
 
 
 class StateTests(unittest.TestCase):

@@ -13,23 +13,20 @@ def select_slot(
 ) -> str | None:
     """Return the briefing slot to send, or None when this run should exit.
 
-    GitHub's cron is UTC and does not follow daylight saving time, so the
-    workflow starts at both UTC hours that can equal the configured Toronto
-    hour. A slot is due during that local hour, and during the following hour
-    if it has not been delivered yet (scheduled jobs often start late). The
-    delivered flag stops the second UTC start from sending a duplicate.
+    GitHub starts scheduled jobs hours late, so the workflow starts every hour
+    and the first run inside a slot's window sends it. The morning window runs
+    from local_hour until afternoon_hour; the afternoon window runs from
+    afternoon_hour to midnight. The delivered flag stops later runs from
+    sending the same slot twice. A forced run inside an undelivered window
+    counts as that slot, so the schedule does not send a second copy.
     """
-    if force:
-        return "manual"
-
     local = _local(now, schedule)
-    for name, hour in _slots(schedule):
-        key = delivery_key(local, name)
-        if key in delivered:
+    for name, start, end in _windows(schedule):
+        if delivery_key(local, name) in delivered:
             continue
-        if local.hour == hour or local.hour == (hour + 1) % 24:
+        if start <= local.hour < end:
             return name
-    return None
+    return "manual" if force else None
 
 
 def delivery_key(now: datetime, slot: str, schedule: dict | None = None) -> str:
@@ -41,11 +38,13 @@ def local_now(now: datetime, schedule: dict) -> datetime:
     return _local(now, schedule)
 
 
-def _slots(schedule: dict) -> list[tuple[str, int]]:
-    slots = [("morning", int(schedule["local_hour"]))]
+def _windows(schedule: dict) -> list[tuple[str, int, int]]:
+    morning = int(schedule["local_hour"])
+    afternoon = int(schedule["afternoon_hour"])
+    windows = [("morning", morning, afternoon)]
     if schedule.get("afternoon_enabled"):
-        slots.append(("afternoon", int(schedule["afternoon_hour"])))
-    return slots
+        windows.append(("afternoon", afternoon, 24))
+    return windows
 
 
 def _local(now: datetime, schedule: dict | None) -> datetime:

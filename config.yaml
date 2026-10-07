@@ -1,13 +1,12 @@
 # Daily AI + Ontario briefing. Edit this file and push to change what the job reads.
 
 schedule:
-  # GitHub Actions cron is UTC and ignores daylight saving time. The workflow
-  # starts at minute 17 of both UTC hours that can be this local hour. Minute 0
-  # is the busiest minute on GitHub, so jobs queued then are the ones that slip.
+  # The workflow checks every hour. The first check on or after local_hour
+  # sends the morning briefing, and later checks that day exit. A check after
+  # afternoon_hour no longer sends the morning one.
   timezone: America/Toronto
   local_hour: 7
-  # Set afternoon_enabled to true to also send at afternoon_hour.
-  # The workflow already starts the matching UTC jobs; they exit until this is true.
+  # Set afternoon_enabled to true to also send once on or after afternoon_hour.
   afternoon_enabled: false
   afternoon_hour: 16
 
