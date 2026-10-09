@@ -50,7 +50,11 @@ def assemble(parsed, candidates: list[Item], limits: dict) -> Digest:
                     why_it_matters=why[:400],
                     watchlist_hit=bool(source.watchlist),
                     discussion_url=safe_http_url(source.discussion_url) or None,
-                    terms=_terms(getattr(picked, "terms", None) or [], explained),
+                    terms=_terms(
+                        getattr(picked, "terms", None) or [],
+                        explained,
+                        f"{source.title} {summary} {why}".lower(),
+                    ),
                 )
             )
             if len(chosen) >= caps[section_id]:
@@ -67,8 +71,8 @@ def assemble(parsed, candidates: list[Item], limits: dict) -> Digest:
     return Digest(subject=subject, intro=intro, sections=sections)
 
 
-def _terms(picked: list, explained: set[str]) -> list[DigestTerm]:
-    """Keep complete terms, each explained only once per briefing."""
+def _terms(picked: list, explained: set[str], visible: str) -> list[DigestTerm]:
+    """Keep complete terms the reader can see, each explained once per briefing."""
     terms: list[DigestTerm] = []
     for raw in picked:
         # " — " separates the fields in the markdown archive.
@@ -76,7 +80,7 @@ def _terms(picked: list, explained: set[str]) -> list[DigestTerm]:
         stands_for = " ".join((raw.stands_for or "").split()).replace(" — ", ", ")[:200]
         explanation = " ".join((raw.explanation or "").split())[:600]
         key = term.lower()
-        if not term or not stands_for or not explanation or key in explained:
+        if not term or not stands_for or not explanation or key in explained or key not in visible:
             continue
         explained.add(key)
         terms.append(DigestTerm(term=term, stands_for=stands_for, explanation=explanation))

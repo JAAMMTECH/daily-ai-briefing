@@ -389,10 +389,18 @@ class DigestArchiveTests(unittest.TestCase):
                 SimpleNamespace(
                     id="ai",
                     items=[
-                        SimpleNamespace(id="ai-1", summary="First.", why_it_matters="", terms=[gguf]),
+                        SimpleNamespace(
+                            id="ai-1",
+                            summary="A new GGUF build.",
+                            why_it_matters="",
+                            terms=[
+                                gguf,
+                                SimpleNamespace(term="Lean", stands_for="Proof assistant", explanation="Not in the text."),
+                            ],
+                        ),
                         SimpleNamespace(
                             id="ai-2",
-                            summary="Second.",
+                            summary="Another GGUF on ROCm.",
                             why_it_matters="",
                             terms=[
                                 SimpleNamespace(term="gguf", stands_for="Again", explanation="Repeated."),
