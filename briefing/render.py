@@ -7,7 +7,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from briefing.config import ROOT
-from briefing.models import Digest, DigestItem, DigestSection, Item
+from briefing.models import Digest, DigestItem, DigestSection, DigestTerm, Item
 from briefing.textutil import safe_http_url
 
 log = logging.getLogger(__name__)
@@ -27,6 +27,7 @@ def assemble(parsed, candidates: list[Item], limits: dict) -> Digest:
     }
     returned = {str(section.id).strip().lower(): section for section in parsed.sections}
     sections: list[DigestSection] = []
+    explained: set[str] = set()
     for section_id in SECTION_ORDER:
         model_section = returned.get(section_id)
         chosen: list[DigestItem] = []
@@ -49,6 +50,7 @@ def assemble(parsed, candidates: list[Item], limits: dict) -> Digest:
                     why_it_matters=why[:400],
                     watchlist_hit=bool(source.watchlist),
                     discussion_url=safe_http_url(source.discussion_url) or None,
+                    terms=_terms(getattr(picked, "terms", None) or [], explained),
                 )
             )
             if len(chosen) >= caps[section_id]:
@@ -63,6 +65,22 @@ def assemble(parsed, candidates: list[Item], limits: dict) -> Digest:
         else:
             intro = "Nothing in today's sources cleared the bar."
     return Digest(subject=subject, intro=intro, sections=sections)
+
+
+def _terms(picked: list, explained: set[str]) -> list[DigestTerm]:
+    """Keep complete terms, each explained only once per briefing."""
+    terms: list[DigestTerm] = []
+    for raw in picked:
+        # " — " separates the fields in the markdown archive.
+        term = " ".join((raw.term or "").split()).replace(" — ", " - ")[:80]
+        stands_for = " ".join((raw.stands_for or "").split()).replace(" — ", ", ")[:200]
+        explanation = " ".join((raw.explanation or "").split())[:600]
+        key = term.lower()
+        if not term or not stands_for or not explanation or key in explained:
+            continue
+        explained.add(key)
+        terms.append(DigestTerm(term=term, stands_for=stands_for, explanation=explanation))
+    return terms
 
 
 def fallback_digest(candidates: list[Item], limits: dict, when: datetime) -> Digest:
@@ -166,6 +184,15 @@ def _item_from_markdown(lines: list[str], index: int) -> tuple[DigestItem, int]:
         why = lines[index].removeprefix("Why it's worth knowing: ").strip()
         index += 1
         index = _skip_blank(lines, index)
+    terms: list[DigestTerm] = []
+    if index < len(lines) and lines[index] == "Terms:":
+        index += 1
+        while index < len(lines) and lines[index].startswith("- **"):
+            term, _, rest = lines[index][4:].partition("** — ")
+            stands_for, _, explanation = rest.partition(" — ")
+            terms.append(DigestTerm(term=term, stands_for=stands_for, explanation=explanation))
+            index += 1
+        index = _skip_blank(lines, index)
     url = ""
     if index < len(lines) and lines[index].startswith("http"):
         url = lines[index].strip()
@@ -188,6 +215,7 @@ def _item_from_markdown(lines: list[str], index: int) -> tuple[DigestItem, int]:
             why_it_matters=why,
             watchlist_hit=watchlist,
             discussion_url=discussion,
+            terms=terms,
         ),
         index,
     )
@@ -210,6 +238,10 @@ def render_markdown(digest: Digest) -> str:
             lines.extend([f"### {item.title}", "", item.source, "", item.summary])
             if item.why_it_matters:
                 lines.extend(["", f"Why it's worth knowing: {item.why_it_matters}"])
+            if item.terms:
+                lines.extend(["", "Terms:"])
+                for term in item.terms:
+                    lines.append(f"- **{term.term}** — {term.stands_for} — {term.explanation}")
             lines.extend(["", item.url])
             if item.discussion_url and item.discussion_url != item.url:
                 lines.append(f"Discussion: {item.discussion_url}")

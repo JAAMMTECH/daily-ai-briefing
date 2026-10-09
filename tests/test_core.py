@@ -11,8 +11,8 @@ from briefing.sources.canadabuys import select_notices
 from briefing.sources.market_scan import items_from_search_response
 from briefing.deliver.email import email_recipients
 from briefing.deliver.telegram import telegram_chat_ids
-from briefing.models import Digest, DigestItem, DigestSection, Item
-from briefing.render import assemble, digest_from_markdown, render_markdown, render_telegram
+from briefing.models import Digest, DigestItem, DigestSection, DigestTerm, Item
+from briefing.render import assemble, digest_from_markdown, render_html, render_markdown, render_telegram
 from briefing.schedule import select_slot
 from briefing.sources import cap_candidates
 from briefing.state import State
@@ -341,6 +341,18 @@ class DigestArchiveTests(unittest.TestCase):
                             why_it_matters="It would be one of the largest openly downloadable models.",
                             watchlist_hit=True,
                             discussion_url="https://news.ycombinator.com/item?id=49978116",
+                            terms=[
+                                DigestTerm(
+                                    term="GGUF",
+                                    stands_for="GPT-Generated Unified Format",
+                                    explanation="A single-file format for quantized model weights — read by llama.cpp.",
+                                ),
+                                DigestTerm(
+                                    term="llama.cpp",
+                                    stands_for="Project name, not an acronym. The .cpp means it is written in C++",
+                                    explanation="A C/C++ engine that runs language models on local hardware.",
+                                ),
+                            ],
                         )
                     ],
                 ),
@@ -360,7 +372,42 @@ class DigestArchiveTests(unittest.TestCase):
                 ),
             ],
         )
-        self.assertEqual(render_markdown(digest_from_markdown(render_markdown(original))), render_markdown(original))
+        restored = digest_from_markdown(render_markdown(original))
+        self.assertEqual(render_markdown(restored), render_markdown(original))
+        self.assertEqual(restored.sections[0].items[0].terms, original.sections[0].items[0].terms)
+
+    def test_a_term_is_explained_only_once_per_briefing(self) -> None:
+        candidates = [
+            Item(title="One", url="https://example.com/1", source="Hacker News", section="ai", item_id="ai-1"),
+            Item(title="Two", url="https://example.com/2", source="Hacker News", section="ai", item_id="ai-2"),
+        ]
+        gguf = SimpleNamespace(term="GGUF", stands_for="GPT-Generated Unified Format", explanation="A file format.")
+        parsed = SimpleNamespace(
+            subject="AI + Ontario briefing",
+            intro="",
+            sections=[
+                SimpleNamespace(
+                    id="ai",
+                    items=[
+                        SimpleNamespace(id="ai-1", summary="First.", why_it_matters="", terms=[gguf]),
+                        SimpleNamespace(
+                            id="ai-2",
+                            summary="Second.",
+                            why_it_matters="",
+                            terms=[
+                                SimpleNamespace(term="gguf", stands_for="Again", explanation="Repeated."),
+                                SimpleNamespace(term="ROCm", stands_for="", explanation="Missing expansion."),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        )
+        digest = assemble(parsed, candidates, {"ai_items": 8, "canada_items": 6})
+        first, second = digest.sections[0].items
+        self.assertEqual([term.term for term in first.terms], ["GGUF"])
+        self.assertEqual(second.terms, [])
+        self.assertIn("GPT-Generated Unified Format", render_html(digest, "now", "Daily briefing"))
 
 
 if __name__ == "__main__":

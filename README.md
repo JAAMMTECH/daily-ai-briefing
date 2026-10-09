@@ -82,6 +82,8 @@ Everyone on the list gets the same email, and they can see the other recipients.
 
 On GitHub: Actions, Daily briefing, Run workflow. That button skips the clock check and sends immediately. Links included in that run are marked seen, so they will not be repeated in the next briefing. A run between 7:00am and noon counts as that day's briefing, so the schedule does not send a second one.
 
+Tick **preview** in the Run workflow form to build a briefing without sending it. The run attaches `briefing-preview` with the email HTML, the markdown, and the Telegram text, and does not mark any story as seen.
+
 You can also run it on your machine. From the repo root:
 
 ```bash
@@ -135,6 +137,8 @@ Edit [config.yaml](config.yaml). You do not need to change Python.
 - A short web search, up to 5 searches, for Ontario school-board and IT tenders and Canadian technology news that the fixed feeds missed. Anthropic charges about $10 per 1,000 searches, so this cap is roughly five cents plus the tokens. The scan is skipped when `ANTHROPIC_API_KEY` is not set, and only links the search actually returned are kept. Set `canada.market_scan.enabled` to `false` to turn it off.
 
 Claude follows the audience note at the top of `config.yaml`. It keeps what is worth knowing: new models and tools, and Ontario or Canadian technology news. A short "Why it's worth knowing" line is general context, not a note about any one company.
+
+Under each story, a Terms box explains the acronyms, project names, and jargon in it: first what the term stands for, or what kind of name it is, then a short technical explanation. Each term is explained once per briefing, at its first appearance. Telegram leaves the terms out to stay short.
 
 The email is the full digest. Telegram is the top 5 items plus a link to the markdown copy committed under `digests/`.
 

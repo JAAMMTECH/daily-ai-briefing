@@ -44,6 +44,14 @@
                   <strong>Why it's worth knowing:</strong> {{ item.why_it_matters }}
                 </p>
                 {% endif %}
+                {% if item.terms %}
+                <div style="margin:8px 0 0;padding:8px 10px;border-left:3px solid #c9d1d9;font-size:13px;line-height:1.45;color:#30363d;">
+                  <p style="margin:0 0 6px;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#5c6570;">Terms</p>
+                  {% for term in item.terms %}
+                  <p style="margin:0 0 8px;"><strong>{{ term.term }}</strong> · <em>{{ term.stands_for }}</em><br>{{ term.explanation }}</p>
+                  {% endfor %}
+                </div>
+                {% endif %}
               </div>
               {% endfor %}
               {% endfor %}

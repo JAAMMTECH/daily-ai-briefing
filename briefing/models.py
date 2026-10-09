@@ -20,6 +20,13 @@ class Item:
 
 
 @dataclass
+class DigestTerm:
+    term: str
+    stands_for: str
+    explanation: str
+
+
+@dataclass
 class DigestItem:
     title: str
     url: str
@@ -28,6 +35,7 @@ class DigestItem:
     why_it_matters: str
     watchlist_hit: bool
     discussion_url: str | None = None
+    terms: list[DigestTerm] = field(default_factory=list)
 
 
 @dataclass

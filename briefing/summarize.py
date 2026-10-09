@@ -26,9 +26,22 @@ For Ontario and Canada, keep items that help a reader understand the technology 
 
 Summaries are one or two sentences, specific, and grounded in the snippet. Refer to candidates only by id. Use each id at most once.
 
+terms teach the vocabulary while the reader reads. The reader is a technical professional who is new to some of this field. For each item, list the acronyms, abbreviations, project and product names, and technical jargon in its title, summary, or why_it_matters that such a reader may not know. Explain a term only at its first appearance in the briefing, never twice. Skip words every professional knows, such as email, cloud, software, or AI. Usually zero to four terms per item.
+- term: exactly as written in the item.
+- stands_for: for an acronym or abbreviation, what it stands for in English, for example GGUF is "GPT-Generated Unified Format". For a name that is not an acronym, say what kind of thing it is, for example llama.cpp is "Project name, not an acronym. The .cpp means it is written in C++". Only give an expansion you are confident is correct. If an acronym has no official expansion, say that.
+- explanation: one to three technical sentences on what it is, how it works, and where it is used. Assume programming knowledge, not knowledge of this field. Do not repeat the item's news.
+
 Return both sections. Section ids must be exactly "ai" and "canada". Put at most the requested number of items in each, best first. If a section has nothing worth sending, return an empty items list. If both are empty, say in the intro that nothing cleared the bar.
 
 Subject line format: "AI + Ontario briefing — {date}". The intro is one or two sentences on what is worth knowing today."""
+
+
+class BriefingTermModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    term: str
+    stands_for: str
+    explanation: str
 
 
 class BriefingItemModel(BaseModel):
@@ -37,6 +50,7 @@ class BriefingItemModel(BaseModel):
     id: str
     summary: str
     why_it_matters: str
+    terms: list[BriefingTermModel]
 
 
 class BriefingSectionModel(BaseModel):

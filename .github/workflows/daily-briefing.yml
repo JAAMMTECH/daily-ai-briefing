@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      preview:
+        description: "Build the briefing and attach it to the run without sending it or marking stories as seen."
+        required: false
+        default: false
+        type: boolean
       resend:
         description: "Saved digest to email again, such as digests/2026-10-06-manual-1027.md. Leave empty for a normal run."
         required: false
@@ -59,12 +64,22 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BRIEFING_FORCE: ${{ github.event_name == 'workflow_dispatch' && !inputs.scheduled && '1' || '0' }}
           RESEND_PATH: ${{ inputs.resend }}
+          PREVIEW: ${{ inputs.preview }}
         run: |
           if [ -n "$RESEND_PATH" ]; then
             python -m briefing.main --resend "$RESEND_PATH"
+          elif [ "$PREVIEW" = "true" ]; then
+            python -m briefing.main --dry-run --force
           else
             python -m briefing.main
           fi
+
+      - name: Attach preview
+        if: inputs.preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: briefing-preview
+          path: out/
 
       - name: Commit digest and state
         if: steps.run.outcome == 'success' || steps.run.outcome == 'failure'
