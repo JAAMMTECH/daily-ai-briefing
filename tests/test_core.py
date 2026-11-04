@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+from briefing.cursor_job import candidate_payload
 from briefing.sources.canadabuys import select_notices
 from briefing.sources.market_scan import items_from_search_response
 from briefing.deliver.email import email_recipients
@@ -416,6 +417,27 @@ class DigestArchiveTests(unittest.TestCase):
         self.assertEqual([term.term for term in first.terms], ["GGUF"])
         self.assertEqual(second.terms, [])
         self.assertIn("GPT-Generated Unified Format", render_html(digest, "now", "Daily briefing"))
+
+
+class CursorJobTests(unittest.TestCase):
+    def test_candidate_payload_caps_the_snippet(self) -> None:
+        item = Item(
+            title="A model release",
+            url="https://example.com/release",
+            source="Hacker News",
+            section="ai",
+            snippet="x" * 5000,
+            item_id="ai-1",
+        )
+        payload = candidate_payload(
+            {"briefing": {"audience": "A curious reader."}, "limits": {"ai_items": 8, "canada_items": 6, "article_chars": 100}},
+            [item],
+            "November 4, 2026",
+        )
+        self.assertEqual(payload["date"], "November 4, 2026")
+        self.assertEqual(payload["limits"], {"ai_items": 8, "canada_items": 6})
+        self.assertEqual(len(payload["candidates"][0]["snippet"]), 100)
+        self.assertEqual(payload["candidates"][0]["id"], "ai-1")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,13 @@ class CollectResult:
     counts: dict[str, int]
 
 
-def collect(client: httpx.Client, cfg: dict, now: datetime) -> CollectResult:
+def collect(
+    client: httpx.Client,
+    cfg: dict,
+    now: datetime,
+    *,
+    skip: set[str] | None = None,
+) -> CollectResult:
     errors: list[str] = []
     counts: dict[str, int] = {}
     gathered: list[Item] = []
@@ -37,13 +43,20 @@ def collect(client: httpx.Client, cfg: dict, now: datetime) -> CollectResult:
         log.info("%s: %d items", name, len(found))
         gathered.extend(found)
 
-    run("hackernews", lambda: hackernews.fetch(client, cfg, now))
-    run("huggingface", lambda: huggingface.fetch(client, cfg, now))
-    run("reddit", lambda: reddit.fetch(client, cfg, now))
-    run("github", lambda: github_watch.fetch(client, cfg, now))
-    run("canada", lambda: rss.fetch(client, cfg, now))
-    run("canadabuys", lambda: canadabuys.fetch(client, cfg, now))
-    run("market_scan", lambda: market_scan.fetch(cfg, now))
+    skipped = skip or set()
+    steps = [
+        ("hackernews", lambda: hackernews.fetch(client, cfg, now)),
+        ("huggingface", lambda: huggingface.fetch(client, cfg, now)),
+        ("reddit", lambda: reddit.fetch(client, cfg, now)),
+        ("github", lambda: github_watch.fetch(client, cfg, now)),
+        ("canada", lambda: rss.fetch(client, cfg, now)),
+        ("canadabuys", lambda: canadabuys.fetch(client, cfg, now)),
+        ("market_scan", lambda: market_scan.fetch(cfg, now)),
+    ]
+    for name, fn in steps:
+        if name in skipped:
+            continue
+        run(name, fn)
 
     items = _dedupe(gathered)
     _tag_watchlist(items, cfg["ai"]["watchlist"].get("keywords") or [])
