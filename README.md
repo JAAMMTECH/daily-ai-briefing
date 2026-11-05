@@ -1,19 +1,19 @@
 # Daily AI + Ontario briefing
 
-A scheduled job that reads the same places a well-informed person checks in the morning (Hacker News, Hugging Face, r/LocalLLM, plus a small hardware watchlist), adds Ontario and Canadian technology news, and asks Claude to keep only the links worth opening. The point is to stay current, not to produce a company briefing. The full digest goes out by email, to one person or a whole list, and a short version goes to Telegram.
+A morning briefing that reads the same places a well-informed person checks (Hacker News, Hugging Face, r/LocalLLM, plus a small hardware watchlist) and adds Ontario and Canadian technology news. The point is to stay current, not to produce a company briefing. The full digest goes out by email.
 
-GitHub Actions starts the job every day. The script collects candidates, skips links it has already sent, and Claude writes the digest. State is saved back to this repo so the same story is not sent again for 30 days.
+A Cursor automation runs it each morning. That run collects candidates, edits the digest, sends the email, and commits `digests/` and `data/seen.json`. The GitHub Action is manual only. `python -m briefing.main` is the older Claude path, and it also sends Telegram.
 
 ## What you will need
 
-- A GitHub repo with this code on the default branch. Scheduled workflows only run there.
+- A GitHub repo with this code on the default branch. The manual workflow runs from there.
 - An [Anthropic API key](https://console.anthropic.com/settings/keys).
 - A Gmail account with 2-step verification, so you can create an app password. Another SMTP provider works if you set the host and port.
 - A Telegram bot.
 
 The model in [config.yaml](config.yaml) is `claude-sonnet-5-5`. That is the right default for a daily edit of sources you already collected: it is fast, and its token price is about half of Opus 5.5 ($2 and $10 per million tokens, against $4 and $20). Opus 5.5 is the stronger model, and it thinks on every request, so a morning run that also searches the web stops being "a few cents." Set `model` to `claude-opus-5-5` if you want that anyway. `effort: low` stays cheaper. `medium` or `high` thinks longer.
 
-GitHub Actions is free on a public repo. A private repo includes 2,000 minutes a month, and this job uses a few minutes a day.
+GitHub Actions is free on a public repo. A private repo includes 2,000 minutes a month. Nothing in this repo starts that workflow on a timer anymore.
 
 ## 1. Put the repo on GitHub
 
@@ -26,7 +26,7 @@ git remote add origin https://github.com/YOU/AI-IT-Updates.git
 git push -u origin main
 ```
 
-Scheduled runs start only after that push is on the default branch. The first scheduled briefing goes out at 7:00am Toronto time once the Vercel timer below is set up. You do not have to wait: see "Run it once now" below.
+The manual workflow is available once that push is on the default branch. See "Run it once now" below.
 
 ## 2. Add repository secrets
 
@@ -80,7 +80,7 @@ Everyone on the list gets the same email, and they can see the other recipients.
 
 ## 3. Run it once now
 
-On GitHub: Actions, Daily briefing, Run workflow. That button skips the clock check and sends immediately. Links included in that run are marked seen, so they will not be repeated in the next briefing. A run between 7:00am and noon counts as that day's briefing, so the schedule does not send a second one.
+On GitHub: Actions, Daily briefing, Run workflow. The workflow is disabled, so enable it first. That button skips the clock check and sends immediately through the Claude path. Links included in that run are marked seen, so they will not be repeated in the next briefing. A run between 7:00am and noon counts as that day's briefing, so a later run does not send a second one.
 
 Tick **preview** in the Run workflow form to build a briefing without sending it. The run attaches `briefing-preview` with the email HTML, the markdown, and the Telegram text, and does not mark any story as seen.
 
@@ -106,22 +106,11 @@ python -m briefing.main --force
 
 ## When it sends
 
-One briefing a day, at 7:00am Toronto time.
+One briefing a day, at 7:00am Toronto time, from the Cursor automation.
 
-GitHub starts its own scheduled jobs late. In October 2026 this repo's jobs were starting about three and a half hours after their scheduled time. So a small Vercel project in [vercel/](vercel/) starts the workflow instead. Vercel calls GitHub's Run workflow API at 11:00 and 12:00 UTC. Those are 7:00am Toronto time in daylight time and in standard time. A run started this way follows the same clock check as a scheduled one: it sends only between 7:00am and noon, and only if today's briefing has not gone out. So one of the two sends and the other exits. The email arrives around 7:02am.
+The GitHub Action no longer has a schedule, and [vercel/vercel.json](vercel/vercel.json) no longer has cron jobs. The old timers called the Claude path. Leave that workflow disabled. Re-enabling it does not bring the schedule back. A manual run still uses Claude and can also send Telegram.
 
-GitHub's own schedule stays on as a backup, starting the workflow every hour from midnight to noon Toronto time. If Vercel misses a day, the first of those that GitHub actually starts after 7:00am sends the briefing. If nothing starts before noon, that day is skipped rather than sent in the afternoon.
-
-To change the morning window, edit `local_hour` and `latest_hour` in `config.yaml`, and the two UTC hours in `vercel/vercel.json`.
-
-### Setting up the Vercel timer
-
-1. On GitHub, create a fine-grained personal access token: Settings, Developer settings, Personal access tokens, Fine-grained tokens. Choose only the `daily-ai-briefing` repository, and give it **Actions: Read and write**. Nothing else.
-2. In Vercel, add a new project and import `daily-ai-briefing`. Set **Root Directory** to `vercel` and **Framework Preset** to Other.
-3. Add two environment variables: `GITHUB_TOKEN` with that token, and `CRON_SECRET` with any long random string. Vercel sends the secret with each cron call, and the function rejects calls without it.
-4. Deploy. The two cron jobs appear under the project's Settings, Cron Jobs. Cron jobs only run on the production deployment.
-
-Pushes that do not change `vercel/`, including the daily digest commits, do not redeploy the project.
+`local_hour` and `latest_hour` in `config.yaml` are the window for a manual run that follows the clock. The Cursor automation has its own schedule.
 
 ## What it reads
 
@@ -149,8 +138,9 @@ The email is the full digest. Telegram is the top 5 items plus a link to the mar
 | `config.yaml` | Sources, watchlist, audience, recipients, model, schedule |
 | `briefing/main.py` | Runs one briefing |
 | `data/seen.json` | Links already sent, and which day's slot was delivered |
-| `digests/` | One markdown file per briefing, committed by Actions |
-| `vercel/` | The 7:00am timer that starts the workflow |
+| `briefing/cursor_job.py` | Prepare and finish steps the Cursor automation runs |
+| `digests/` | One markdown file per briefing |
+| `vercel/` | Leftover project. It no longer starts the briefing |
 
 ## If a run fails
 
@@ -160,4 +150,4 @@ Open the failed Actions run and read the log.
 - Email failed: the app password is wrong, or Gmail blocked the sign-in. The script does not mark links as seen when email fails, so the next start can retry.
 - Telegram failed: you have not sent `/start` to the bot, or the chat id is wrong. If email succeeded, those links are marked seen so you are not mailed twice. The digest is still in `digests/` and in your inbox.
 - Reddit failed: expected sometimes. The log says the run continued.
-- A run is green but you got nothing: most hourly runs exit on purpose, before 7:00am or after the briefing was sent. Check the log for "Not due". Use Run workflow to send now.
+- A manual run is green but you got nothing: it exited because it was outside 7:00am to noon, or today's briefing was already sent. Check the log for "Not due". Run it again with the clock check off to send now.

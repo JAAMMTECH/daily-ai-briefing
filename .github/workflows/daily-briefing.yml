@@ -1,15 +1,10 @@
 name: Daily briefing
 
 on:
-  schedule:
-    # Backup only. The Vercel project in vercel/ starts this at 7:00 Toronto
-    # time. GitHub starts its own schedule hours late, so these hourly starts
-    # from midnight to noon Toronto time only matter if Vercel misses a day.
-    - cron: "17 4-16 * * *"
   workflow_dispatch:
     inputs:
       scheduled:
-        description: "Follow the 7:00 to noon window and skip if today's briefing already went out. The Vercel timer sets this."
+        description: "Follow the 7:00 to noon window and skip if today's briefing already went out."
         required: false
         default: false
         type: boolean
@@ -24,8 +19,7 @@ on:
         default: ""
         type: string
 
-# One briefing at a time, so a late run cannot race the next UTC start
-# and send the same digest twice.
+# One briefing at a time, so two manual runs cannot send the same digest.
 concurrency:
   group: daily-briefing
   cancel-in-progress: false
